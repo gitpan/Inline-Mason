@@ -2,14 +2,20 @@ package Inline::Mason;
 
 use strict;
 
-our $VERSION = '0.06';
+our $VERSION = '0.07';
 
 use Inline::Mason::Base;
 use AutoLoader;
 our @EXPORT = qw(AUTOLOAD);
 our @ISA = qw(Inline::Mason::Base AutoLoader);
 
-use Text::MicroMason qw(execute);
+use Text::MicroMason qw(
+			execute
+			compile
+			execute_file
+			safe_execute
+			try_execute
+			);
 use Inline::Files::Virtual;
 
 
@@ -197,6 +203,19 @@ File B.pm
   __Mason__
   Hola, el mundo.
 
+
+=head1 Text::MicroMason methods
+
+You can also call methods provided by L<Text::MicroMason> using Inline::Mason.
+
+  Inline::Mason::execute( $hello );
+  Inline::Mason::safe_execute( $hello );
+  Inline::Mason::try_execute( $hello );
+
+  $n = Inline::Mason::compile( $nifty );
+  $n->(lang => "Perl");
+
+  Inline::Mason::execute_file( 't/external_mason', lang => "Perl" );
 
 
 =head1 SEE ALSO
