@@ -2,40 +2,30 @@ package Inline::Mason;
 
 use strict;
 
-our $VERSION = '0.04';
+our $VERSION = '0.05';
 
+use Inline::Mason::Base;
 use AutoLoader;
 our @EXPORT = qw(AUTOLOAD);
-our @ISA = qw(AutoLoader);
+our @ISA = qw(Inline::Mason::Base AutoLoader);
 
 use Text::MicroMason qw(execute);
 use Inline::Files::Virtual;
 
-our $template;
-our %taboo_word = map{$_=>1} qw(
-				import
-				load_mason
-				load_file
-				generate
-				AUTOLOAD
-				);
-
-our $as_subs;
-our $passive;
-our $file_marker = qr/^__\w+__\n/o;
-sub err_taboo { "This word '$_[0]' is forbidden. Please rename it." }
 
 sub import {
     shift;
     my @ext_files;
+    my ($pkg, $script_name) = (caller(0))[0,1];
+
     foreach my $t (@_){	
-	$as_subs = 1 if $t eq 'as_subs';
-	$passive = 1 if $t eq 'passive';
+	$as_subs->{$pkg} = 1 if $t eq 'as_subs';
+	$passive->{$pkg} = 1 if $t eq 'passive';
+	$use_oo->{$pkg} = 1  if $t eq 'OO';
 	@ext_files = @$t if ref($t) eq 'ARRAY';
     }
-    return 1 if $passive;
+    return 1 if $passive->{$pkg};
 
-    my ($pkg, $script_name) = (caller(0))[0,1];
     foreach my $real_file ($script_name, @ext_files){
 	load_file($real_file, $pkg);
     }
@@ -50,7 +40,7 @@ sub load_mason {
 	unless( defined $template->{$pkg}{$marker} ){
 	    $template->{$pkg}{$marker} = $content;
 	}
-	*{"${pkg}::$marker"} = \&{"Inline::Mason::$marker"} if $as_subs;
+	*{"${pkg}::$marker"} = \&{"Inline::Mason::$marker"} if $as_subs->{$pkg};
     }
 }
 
@@ -68,10 +58,9 @@ sub load_file {
 	vf_open(my $F, $vfile) or die "$! ==> $marker";
 	my $content = <$F>;
 	next unless $content;
-	next if defined $template->{$pkg}{$marker};
 	$template->{$pkg}{$marker} = $content;
 	no strict;
-	*{"${pkg}::$marker"} = \&{"Inline::Mason::$marker"} if $as_subs;
+	*{"${pkg}::$marker"} = \&{"Inline::Mason::$marker"} if $as_subs->{$pkg};
 	vf_close $F;
     }
 }
@@ -81,6 +70,7 @@ sub generate {
     my %args = @_;
     execute($template->{(caller(0))[0]}{$name}, %args);
 }
+
 
 sub AUTOLOAD{
     use vars '$AUTOLOAD';
@@ -105,30 +95,14 @@ Inline::Mason - Inline Mason Script
 
 =head1 SYNOPSIS
 
+    package MY::Mason;
     use Inline::Mason 'as_subs';
+    our @ISA = qw(Inline::Mason);
 
     print Inline::Mason::generate('HELLO');
     print Inline::Mason::HELLO();
     print HELLO();
     print NIFTY(lang => 'Perl');
-
-
-    ### load mason script in place ###
-    Inline::Mason::load_mason
-    (
-     BEATLES
-     =>
-     'Nothing\'s gonna change my <% $ARGS{what} %>',
-     # ... ... ...
-     );
-
-    print BEATLES(what => 'world');
-
-
-    ### load mason script explicitly ###
-
-    use Inline::Mason qw(passive as_subs);
-    Inline::Mason::load_file('external_mason.txt');
 
 
 
@@ -157,16 +131,31 @@ Invoking Inline::Mason with it may let you treat virtual files as subroutines an
 
 If it is passed, the module will not spontaneously load mason scripts until you explicitly load them.
 
-
 =head2 FUNCTIONS
 
 =head3 load_mason
 
 Create mason scripts in place, and you can pass a list of pairs.
 
+
+    Inline::Mason::load_mason
+    (
+     BEATLES
+     =>
+     'Nothing\'s gonna change my <% $ARGS{what} %>',
+     # ... ... ...
+     );
+
+    print BEATLES(what => 'world');
+
 =head3 load_file
 
 Load an external file manually and explicitly, and the scripts will belong to the caller's package. This is a safer and more robust way when L<Inline::Mason> is used across several files and packages.
+
+
+    use Inline::Mason qw(passive as_subs);
+    Inline::Mason::load_file('external_mason.txt');
+
 
 
 =head1 EXTERNAL MASON
@@ -184,7 +173,8 @@ Inline mason scripts are specific to packages. It means if you load virtual file
 
 An small example is illustrated below.
 
-  ### file A.pm ###
+File A.pm
+
   package A;
   use Inline::Mason qw(as_subs);
   1;
@@ -193,7 +183,8 @@ An small example is illustrated below.
   Hello, World.
 
 
-  ### file B.pm ###
+File B.pm
+
   package B;
   use Inline::Mason qw(as_subs);
   require 'A.pm';
@@ -210,7 +201,13 @@ An small example is illustrated below.
 
 =head1 SEE ALSO
 
+See L<Inline::Mason::OO> for an object-oriented and extended style of L<Inline::Mason>
+
 This module uses L<Text::MicroMason> as its backend instead of L<HTML::Mason>, because it is much lighter and more accessible for this purpose. Please go to L<Text::MicroMason> for details and its limitations.
+
+=head1 CAVEAT
+
+This module is not mature yet, and everything is subject to changes. Use it with your own caution.
 
 =head1 COPYRIGHT AND LICENSE
 

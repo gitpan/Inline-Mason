@@ -3,7 +3,10 @@ Makefile.PL
 MANIFEST
 README
 t/Inline-Mason.t
+t/Inline-Mason.OO.t
 t/Inline-Mason.passive.t
 t/external_mason
 lib/Inline/Mason.pm
+lib/Inline/Mason/Base.pm
+lib/Inline/Mason/OO.pm
 META.yml                                 Module meta-data (added by MakeMaker)

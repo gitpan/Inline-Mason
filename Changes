@@ -17,3 +17,9 @@ Revision history for Perl extension Inline::Mason.
 	- added per-package-inline-mason
 	- added load_file
 	- modified duplication resolution policy
+
+0.05  Sat, 28 Feb 2004 10:19:07 +0800
+	- added Inline/Mason/Base.pm
+	- added Inline/Mason/OO.pm
+	- extended to OO style
+	- document tweaked
