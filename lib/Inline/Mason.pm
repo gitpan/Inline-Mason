@@ -2,7 +2,7 @@ package Inline::Mason;
 
 use strict;
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 use AutoLoader;
 our @EXPORT = qw(AUTOLOAD);
@@ -12,40 +12,32 @@ use Text::MicroMason qw(execute);
 use Inline::Files::Virtual;
 
 our $template;
-our %tatoo_word = map{$_=>1} qw(import load_mason generate AUTOLOAD);
+our %taboo_word = map{$_=>1} qw(
+				import
+				load_mason
+				load_file
+				generate
+				AUTOLOAD
+				);
 
 our $as_subs;
+our $passive;
+our $file_marker = qr/^__\w+__\n/o;
+sub err_taboo { "This word '$_[0]' is forbidden. Please rename it." }
 
 sub import {
     shift;
     my @ext_files;
     foreach my $t (@_){	
-	if($t eq 'as_subs'){
-	    $as_subs = 1;
-	}
-	elsif(ref($t) eq 'ARRAY'){
-	    @ext_files = @$t;
-	}
+	$as_subs = 1 if $t eq 'as_subs';
+	$passive = 1 if $t eq 'passive';
+	@ext_files = @$t if ref($t) eq 'ARRAY';
     }
+    return 1 if $passive;
 
     my ($pkg, $script_name) = (caller(0))[0,1];
     foreach my $real_file ($script_name, @ext_files){
-	my @virtual_filenames = vf_load($real_file, qr/^__\w+__\n/);
-	local $/;
-	foreach my $vfile (@virtual_filenames){
-	    my $marker = vf_marker($vfile);
-	    $marker =~ s/\n+//so;
-	    $marker =~ s/^__(.+?)__/$1/so;
-	    die "This word '$marker' is forbidden" if $tatoo_word{$marker};
-	    vf_open(my $F, $vfile) or die "$! ==> $marker";
-	    my $content = <$F>;
-	    next unless $content;
-	    next if defined $template->{$marker};
-	    $template->{$marker} = $content;
-	    no strict;
-	    *{"${pkg}::$marker"} = \&{"Inline::Mason::$marker"} if $as_subs;
-	    vf_close $F;
-	}
+	load_file($real_file, $pkg);
     }
 }
 
@@ -54,29 +46,53 @@ sub load_mason {
     my ($pkg) = (caller(0))[0];
     no strict;
     while(my($marker, $content) = each %arg){
-	die "This word '$marker' is forbidden" if $tatoo_word{$marker};
-	$template->{$marker} = $content unless defined $template->{$marker};
+	die err_taboo($marker) if $taboo_word{$marker};
+	unless( defined $template->{$pkg}{$marker} ){
+	    $template->{$pkg}{$marker} = $content;
+	}
 	*{"${pkg}::$marker"} = \&{"Inline::Mason::$marker"} if $as_subs;
+    }
+}
+
+sub load_file {
+    my $filename = shift;
+    my $pkg = shift || (caller(0))[0];
+
+    my @virtual_filenames = vf_load($filename, $file_marker);
+    local $/;
+    foreach my $vfile (@virtual_filenames){
+	my $marker = vf_marker($vfile);
+	$marker =~ s/\n+//so;
+	$marker =~ s/^__(.+?)__/$1/so;
+	die err_taboo($marker) if $taboo_word{$marker};
+	vf_open(my $F, $vfile) or die "$! ==> $marker";
+	my $content = <$F>;
+	next unless $content;
+	next if defined $template->{$pkg}{$marker};
+	$template->{$pkg}{$marker} = $content;
+	no strict;
+	*{"${pkg}::$marker"} = \&{"Inline::Mason::$marker"} if $as_subs;
+	vf_close $F;
     }
 }
 
 sub generate {
     my $name = shift;
     my %args = @_;
-    execute($template->{$name}, %args);
+    execute($template->{(caller(0))[0]}{$name}, %args);
 }
 
 sub AUTOLOAD{
     use vars '$AUTOLOAD';
     $AUTOLOAD =~ /.+::(.+)/o;
-    if(defined $template->{$1}){
-	execute($template->{$1}, @_);
+    my $pkg = (caller(0))[0];
+    if(defined $template->{$pkg}{$1}){
+	execute($template->{$pkg}{$1}, @_);
     }
     else {
-	die "$1 does not exist.\n";
+	die "${pkg}::$1 does not exist.\n";
     }
 }
-
 
 
 1;
@@ -96,6 +112,8 @@ Inline::Mason - Inline Mason Script
     print HELLO();
     print NIFTY(lang => 'Perl');
 
+
+    ### load mason script in place ###
     Inline::Mason::load_mason
     (
      BEATLES
@@ -105,6 +123,14 @@ Inline::Mason - Inline Mason Script
      );
 
     print BEATLES(what => 'world');
+
+
+    ### load mason script explicitly ###
+
+    use Inline::Mason qw(passive as_subs);
+    Inline::Mason::load_file('external_mason.txt');
+
+
 
     __END__
 
@@ -121,18 +147,66 @@ Inline::Mason - Inline Mason Script
 
 This module enables you to embed mason scripts in your perl code. Using it is simple, much is shown in the above.
 
-I<as_subs> is an option. Invoking Inline::Mason with it may let you treat virtual files as subroutines and call them directly.
+=head2 OPTIONS
 
-I<load_mason> lets you create mason scripts in place, and you can pass a list of pairs.
+=head3 as_subs
+
+Invoking Inline::Mason with it may let you treat virtual files as subroutines and call them directly.
+
+=head3 passive
+
+If it is passed, the module will not spontaneously load mason scripts until you explicitly load them.
+
+
+=head2 FUNCTIONS
+
+=head3 load_mason
+
+Create mason scripts in place, and you can pass a list of pairs.
+
+=head3 load_file
+
+Load an external file manually and explicitly, and the scripts will belong to the caller's package. This is a safer and more robust way when L<Inline::Mason> is used across several files and packages.
 
 
 =head1 EXTERNAL MASON
 
-You can also use mason scripts which reside in external files. All you need to do is pass their names when you use the module.
+As is said in the above, I<load_file> serves the purpose. Also, you can specify the files wherein mason scripts reside when you first use the module. All you need to do is pass their names when you use the module, and then L<Inline::Mason> will actively process them.
 
-  use Inline::Mason 'as_subs', [qw(external_mason.pl)];
+  use Inline::Mason 'as_subs', [qw(external_mason.txt)];
 
-When duplication happens, in-file mason is picked first.
+When duplicated mason script's marker appears, new one overrides the old one.
+
+
+=head1 PER-PACKAGE MASON
+
+Inline mason scripts are specific to packages. It means if you load virtual files within two different package context, files with the same marker will be viewed as different entities.
+
+An small example is illustrated below.
+
+  ### file A.pm ###
+  package A;
+  use Inline::Mason qw(as_subs);
+  1;
+  __END__
+  __Mason__
+  Hello, World.
+
+
+  ### file B.pm ###
+  package B;
+  use Inline::Mason qw(as_subs);
+  require 'A.pm';
+  package A;
+  print Mason();        # Hello, World.
+  package B;
+  print Mason();        # Hola, el mundo.
+  1;
+  __END__
+  __Mason__
+  Hola, el mundo.
+
+
 
 =head1 SEE ALSO
 

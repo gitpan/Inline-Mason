@@ -11,3 +11,9 @@ Revision history for Perl extension Inline::Mason.
 	- migrated $as_sub to be global
 	- added %tatoo_word
 	- added Inline::Mason::load_mason()
+
+0.04
+	- s/tatoo/taboo/;
+	- added per-package-inline-mason
+	- added load_file
+	- modified duplication resolution policy
