@@ -2,7 +2,7 @@ package Inline::Mason;
 
 use strict;
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 use AutoLoader;
 our @EXPORT = qw(AUTOLOAD);
@@ -12,10 +12,12 @@ use Text::MicroMason qw(execute);
 use Inline::Files::Virtual;
 
 our $template;
+our %tatoo_word = map{$_=>1} qw(import load_mason generate AUTOLOAD);
+
+our $as_subs;
 
 sub import {
     shift;
-    my $as_subs;
     my @ext_files;
     foreach my $t (@_){	
 	if($t eq 'as_subs'){
@@ -34,6 +36,7 @@ sub import {
 	    my $marker = vf_marker($vfile);
 	    $marker =~ s/\n+//so;
 	    $marker =~ s/^__(.+?)__/$1/so;
+	    die "This word '$marker' is forbidden" if $tatoo_word{$marker};
 	    vf_open(my $F, $vfile) or die "$! ==> $marker";
 	    my $content = <$F>;
 	    next unless $content;
@@ -43,6 +46,17 @@ sub import {
 	    *{"${pkg}::$marker"} = \&{"Inline::Mason::$marker"} if $as_subs;
 	    vf_close $F;
 	}
+    }
+}
+
+sub load_mason {
+    my %arg = @_;
+    my ($pkg) = (caller(0))[0];
+    no strict;
+    while(my($marker, $content) = each %arg){
+	die "This word '$marker' is forbidden" if $tatoo_word{$marker};
+	$template->{$marker} = $content unless defined $template->{$marker};
+	*{"${pkg}::$marker"} = \&{"Inline::Mason::$marker"} if $as_subs;
     }
 }
 
@@ -82,6 +96,16 @@ Inline::Mason - Inline Mason Script
     print HELLO();
     print NIFTY(lang => 'Perl');
 
+    Inline::Mason::load_mason
+    (
+     BEATLES
+     =>
+     'Nothing\'s gonna change my <% $ARGS{what} %>',
+     # ... ... ...
+     );
+
+    print BEATLES(what => 'world');
+
     __END__
 
     __HELLO__
@@ -97,7 +121,10 @@ Inline::Mason - Inline Mason Script
 
 This module enables you to embed mason scripts in your perl code. Using it is simple, much is shown in the above.
 
-'as_subs' is an option. Invoking Inline::Mason with it may let you treat virtual files as subroutines and call them directly.
+I<as_subs> is an option. Invoking Inline::Mason with it may let you treat virtual files as subroutines and call them directly.
+
+I<load_mason> lets you create mason scripts in place, and you can pass a list of pairs.
+
 
 =head1 EXTERNAL MASON
 
@@ -107,19 +134,13 @@ You can also use mason scripts which reside in external files. All you need to d
 
 When duplication happens, in-file mason is picked first.
 
-
-
 =head1 SEE ALSO
 
 This module uses L<Text::MicroMason> as its backend instead of L<HTML::Mason>, because it is much lighter and more accessible for this purpose. Please go to L<Text::MicroMason> for details and its limitations.
 
-=head1 AUTHOR
-
-xern <xern@cpan.org>
-
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2004 by xern
+Copyright (C) 2004 by Yung-chung Lin (a.k.a. xern) E<lt>xern@cpan.orgE<gt>
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself

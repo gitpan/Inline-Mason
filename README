@@ -9,6 +9,16 @@ SYNOPSIS
            print HELLO();
            print NIFTY(lang => 'Perl');
 
+           Inline::Mason::load_mason
+           (
+            BEATLES
+            =>
+            'Nothing\'s gonna change my <% $ARGS{what} %>',
+            # ... ... ...
+            );
+
+           print BEATLES(what => 'world');
+
            __END__
 
            __HELLO__
@@ -23,13 +33,6 @@ DESCRIPTION
        This module enables you to embed mason scripts in your perl code. Using it
        is simple, much is shown in the above.
 
-       'as_subs' is an option. Invoking Inline::Mason with it may let you treat
-       virtual files as subroutines and call them directly.
-
-       This module uses Text::MicroMason as its backend instead of HTML::Mason,
-       because it is much lighter and more accessible for this purpose. Please go
-       to Text::MicroMason for details and its limitations.
-
 
 INSTALLATION
 
@@ -43,7 +46,7 @@ To install this module type the following:
 
 COPYRIGHT AND LICENCE
 
-Copyright (C) 2004 by xern
+Copyright (C) 2004 by Yung-chung Lin (a.k.a xern) <xern@cpan.org>
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself
