@@ -1,7 +1,7 @@
 package Inline::Mason::OO;
 
 use strict;
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 use AutoLoader;
 use Inline::Mason::Base;
@@ -12,13 +12,25 @@ our @ISA = qw(Inline::Mason::Base AutoLoader);
 use Text::MicroMason qw(execute);
 use Inline::Files::Virtual;
 
+our @files_to_load;
+sub to_load_files {
+    push @files_to_load, @_;
+}
+
+sub import {
+    shift;
+    my $no_autoload;
+    foreach my $arg (@_){
+	$no_autoload = 1 if($arg eq 'no_autoload');
+    }
+    to_load_files((caller(0))[1]) unless $no_autoload;
+}
 
 sub new {
     my $pkg = shift;
     my @file = @_;
     my $self = bless {} => $pkg;
-    my ($caller_pkg, $script_name) = (caller(0))[0,1];
-    foreach my $f ($script_name, @file){
+    foreach my $f (grep{$_} @files_to_load, (caller(0))[1], @file){
 	$self->load_file($f);
     }
     $self;
@@ -48,7 +60,8 @@ sub load_file {
 	$marker =~ s/^__(.+?)__/$1/so;
 	die err_taboo($marker) if $taboo_word{$marker};
 	vf_open(my $F, $vfile) or die "$! ==> $marker";
-	$self->load_mason($marker, <$F>);
+	my $content = <$F>;
+	$self->load_mason($marker, $content) if $content;
 	vf_close $F;
     }
 }
@@ -89,17 +102,30 @@ Inline::Mason::OO - Inline OO Mason
 
 =head1 SYNOPSIS
 
-My perl script:
+=head3 MY::Mason file:
 
     package MY::Mason;
-    use Inline::Mason::OO;
+    use Inline::Mason::OO;  # __CARDINALS__ will automatically loaded.
+    # or
+    # use Inline::Mason::OO qw(no_autoload);
+    # to escape from loading __CARDINALS__
     our @ISA = qw(Inline::Mason::OO);
 
-    package main;
+    1;
+    __END__
 
+    __CARDINALS__
+    % my @cardinals = qw(eins zwei drei);
+    <% join q/ /, @cardinals %>
+
+
+=head3 My perl script:
+
+    use MY::Mason
     my $m = new MY::Mason ('t/external_mason');
     print $m->HELLO();
     print $m->NIFTY(lang => 'Perl');
+    print $m->CARDINALS();
 
 
 
@@ -110,10 +136,7 @@ My perl script:
     Hello <% $noun %>!
     How are ya?
 
-
-
-
-t/external_mason
+=head3 t/external_mason
 
     __NIFTY__
     <% $ARGS{lang} %> is nifty!
@@ -122,6 +145,32 @@ t/external_mason
 =head1 DESCRIPTION
 
 This module extends the power of L<Inline::Mason> to an OO level. You may use it to build a module specific for generating documents, like help documentation, etc.
+
+=head2 ON IMPORTING
+
+On importing the module, by default, the inline-mason will be loaded. However, you can still pass 'no_autoload' stating that you don't want the module to automatically load inline-mason scripts dwelling in the module file.
+
+    use Inline::Mason::OO qw(no_autoload);
+
+Besides, you can call 'to_load_files' in the parent module, and the files will be loaded every time when you instantiate a new object.
+
+    package MY::Mason;
+    use Inline::Mason::OO;
+    our @ISA = qw(Inline::Mason::OO);
+    Inline::Mason::OO::to_load_files(@files);
+
+    1;
+    __END__
+
+And, of course, you can do this superfluous and redundant action.
+
+    package MY::Mason;
+    use Inline::Mason::OO qw(no_autoload);
+    our @ISA = qw(Inline::Mason::OO);
+    Inline::Mason::OO::to_load_files(__FILE__);
+
+    1;
+    __END__
 
 
 
@@ -155,6 +204,7 @@ Load an external file manually and explicitly.
 
     my $m = new MY::Mason;
     $m->load_file('external_mason.txt');
+
 
 =head1 SEE ALSO
 

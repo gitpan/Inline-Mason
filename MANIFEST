@@ -5,6 +5,7 @@ README
 t/Inline-Mason.t
 t/Inline-Mason.OO.t
 t/Inline-Mason.passive.t
+t/test.pm
 t/external_mason
 lib/Inline/Mason.pm
 lib/Inline/Mason/Base.pm

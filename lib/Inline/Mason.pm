@@ -2,7 +2,7 @@ package Inline::Mason;
 
 use strict;
 
-our $VERSION = '0.05';
+our $VERSION = '0.06';
 
 use Inline::Mason::Base;
 use AutoLoader;

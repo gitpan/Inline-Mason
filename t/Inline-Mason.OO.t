@@ -1,11 +1,5 @@
-package MY::Mason;
-use ExtUtils::testlib;
-use Inline::Mason::OO;
-our @ISA = qw(Inline::Mason::OO);
-
-
 package main;
-
+require 't/test.pm';
 use strict;
 use Test::More qw(no_plan);
 
@@ -14,12 +8,12 @@ like( $m->HELLO(), qr/Hello/s, 'oo hello');
 like( $m->NIFTY(lang => 'Perl'), qr/Perl/s, 'oo nifty');
 $m->load_mason
     (
-     BEATLES
+     'BEATLES'
      =>
      'Nothing\'s gonna change my <% $ARGS{what} %>',
      );
-like($m->BEATLES(what => 'world'), qr/world/, 'beatles');
-
+like($m->BEATLES(what => 'world'), qr/world/, 'oo beatles');
+like($m->CARDINALS, qr/s zwei d/, 'oo cardinals');
 
 __END__
 

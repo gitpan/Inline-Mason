@@ -2,28 +2,14 @@ Inline-Mason
 ============
 
 SYNOPSIS
+           package MY::Mason;
            use Inline::Mason 'as_subs';
+           our @ISA = qw(Inline::Mason);
 
            print Inline::Mason::generate('HELLO');
            print Inline::Mason::HELLO();
            print HELLO();
            print NIFTY(lang => 'Perl');
-
-           ### load mason script in place ###
-           Inline::Mason::load_mason
-           (
-            BEATLES
-            =>
-            'Nothing\'s gonna change my <% $ARGS{what} %>',
-            # ... ... ...
-            );
-
-           print BEATLES(what => 'world');
-
-           ### load mason script explicitly ###
-
-           use Inline::Mason qw(passive as_subs);
-           Inline::Mason::load_file('external_mason.txt');
 
            __END__
 
@@ -38,7 +24,6 @@ SYNOPSIS
 DESCRIPTION
        This module enables you to embed mason scripts in your perl code. Using it
        is simple, much is shown in the above.
-
 
 
 

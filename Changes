@@ -23,3 +23,6 @@ Revision history for Perl extension Inline::Mason.
 	- added Inline/Mason/OO.pm
 	- extended to OO style
 	- document tweaked
+
+0.06  Sat, 28 Feb 2004 12:21:23 +0800
+	- added no_autoload() and to_load_files() in Inline/Mason/OO.pm
