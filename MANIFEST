@@ -1,0 +1,7 @@
+Changes
+Makefile.PL
+MANIFEST
+README
+t/Inline-Mason.t
+lib/Inline/Mason.pm
+META.yml                                 Module meta-data (added by MakeMaker)
