@@ -4,3 +4,5 @@ Revision history for Perl extension Inline::Mason.
 	- original version; created by h2xs 1.23 with options
 		-n Inline::Mason -O -XA -c --skip-ppport --skip-warnings
 
+0.02  Wed, 25 Feb 2004 15:47:38 +0800
+	- added external mason capability

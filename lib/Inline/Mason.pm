@@ -2,7 +2,7 @@ package Inline::Mason;
 
 use strict;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 use AutoLoader;
 our @EXPORT = qw(AUTOLOAD);
@@ -16,21 +16,33 @@ our $template;
 sub import {
     shift;
     my $as_subs;
-    $as_subs = 1 if $_[0] eq 'as_subs';
+    my @ext_files;
+    foreach my $t (@_){	
+	if($t eq 'as_subs'){
+	    $as_subs = 1;
+	}
+	elsif(ref($t) eq 'ARRAY'){
+	    @ext_files = @$t;
+	}
+    }
+
     my ($pkg, $script_name) = (caller(0))[0,1];
-    my @virtual_filenames = vf_load($script_name, qr/^__\w+__\n/);
-    local $/;
-    foreach my $vfile (@virtual_filenames){
-	my $marker = vf_marker($vfile);
-	$marker =~ s/\n+//so;
-	$marker =~ s/^__(.+?)__/$1/so;
-	vf_open(my $F, $vfile) or die "$! ==> $marker";
-	my $content = <$F>;
-	next unless $content;
-	$template->{$marker} .= $content;
-	no strict;
-	*{"${pkg}::$marker"} = \&{"Inline::Mason::$marker"} if $as_subs;
-	vf_close $F;
+    foreach my $real_file ($script_name, @ext_files){
+	my @virtual_filenames = vf_load($real_file, qr/^__\w+__\n/);
+	local $/;
+	foreach my $vfile (@virtual_filenames){
+	    my $marker = vf_marker($vfile);
+	    $marker =~ s/\n+//so;
+	    $marker =~ s/^__(.+?)__/$1/so;
+	    vf_open(my $F, $vfile) or die "$! ==> $marker";
+	    my $content = <$F>;
+	    next unless $content;
+	    next if defined $template->{$marker};
+	    $template->{$marker} = $content;
+	    no strict;
+	    *{"${pkg}::$marker"} = \&{"Inline::Mason::$marker"} if $as_subs;
+	    vf_close $F;
+	}
     }
 }
 
@@ -43,7 +55,12 @@ sub generate {
 sub AUTOLOAD{
     use vars '$AUTOLOAD';
     $AUTOLOAD =~ /.+::(.+)/o;
-    execute($template->{$1}, @_);
+    if(defined $template->{$1}){
+	execute($template->{$1}, @_);
+    }
+    else {
+	die "$1 does not exist.\n";
+    }
 }
 
 
@@ -81,6 +98,18 @@ Inline::Mason - Inline Mason Script
 This module enables you to embed mason scripts in your perl code. Using it is simple, much is shown in the above.
 
 'as_subs' is an option. Invoking Inline::Mason with it may let you treat virtual files as subroutines and call them directly.
+
+=head1 EXTERNAL MASON
+
+You can also use mason scripts which reside in external files. All you need to do is pass their names when you use the module.
+
+  use Inline::Mason 'as_subs', [qw(external_mason.pl)];
+
+When duplication happens, in-file mason is picked first.
+
+
+
+=head1 SEE ALSO
 
 This module uses L<Text::MicroMason> as its backend instead of L<HTML::Mason>, because it is much lighter and more accessible for this purpose. Please go to L<Text::MicroMason> for details and its limitations.
 
